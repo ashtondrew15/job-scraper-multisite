@@ -1,0 +1,85 @@
+import streamlit as st
+import pandas as pd
+import time
+from datetime import datetime
+from scraping.indeed_selenium import scrape_indeed
+from scraping.remoteok_bs4 import scrape_remoteok
+from scraping.careerjet_api import scrape_careerjet
+
+# Set up the Streamlit page
+st.set_page_config(page_title="Finance Job Scraper", layout="wide")
+
+resume_info = {
+    "name": "Chris Vitale",
+    "email": "vitalechris32@gmail.com",
+    "location": "Myrtle Beach, SC",
+    "linkedin": "https://www.linkedin.com/in/chris-vitale-ou/",
+    "resume_file": "assets/Chris_Vitale_Resume_March_2025.pdf"
+}
+
+job_boards = [
+    {"name": "Indeed", "method": "selenium"},
+    {"name": "Remote OK", "method": "bs4"},
+    {"name": "CareerJet", "method": "api"},
+]
+
+scraper_map = {
+    "Indeed": scrape_indeed,
+    "Remote OK": scrape_remoteok,
+    "CareerJet": scrape_careerjet,
+}
+
+# Sidebar UI
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/1077/1077012.png", width=80)
+    st.title("👤 Chris Vitale")
+    st.markdown(f"📍 {resume_info['location']}")
+    st.markdown(f"✉️ {resume_info['email']}")
+    st.markdown(f"[🔗 LinkedIn]({resume_info['linkedin']})", unsafe_allow_html=True)
+    st.markdown("---")
+
+    st.header("🔍 Filters")
+    keyword = st.text_input("Keywords", "financial analyst")
+    location = st.selectbox("Location", ["Orlando, FL", "Remote", "Hybrid"])
+    test_mode = st.checkbox("🧪 Test mode", value=False)
+    selected_boards = st.multiselect("Select job boards", [b["name"] for b in job_boards], default=["Indeed", "Remote OK"])
+    run_button = st.button("🚀 Run Job Search")
+
+# Main Panel
+st.title("📊 Finance Job Scraper + Auto Apply")
+st.markdown("Scrapes top finance job boards and applies using Chris Vitale's resume.")
+
+if run_button:
+    all_jobs = []
+    with st.spinner("Scraping selected job boards..."):
+        for board_name in selected_boards:
+            st.markdown(f"### 🔍 Searching {board_name}...")
+            scraper = scraper_map.get(board_name)
+            if scraper:
+                try:
+                    jobs = scraper(keyword, location)
+                    all_jobs.extend(jobs)
+                except Exception as e:
+                    st.error(f"Failed to scrape {board_name}: {e}")
+            else:
+                st.warning(f"No scraper implemented for {board_name}")
+
+    if all_jobs:
+        df = pd.DataFrame(all_jobs)
+        st.success(f"✅ Found {len(df)} job(s)")
+        st.dataframe(df)
+
+        st.subheader("📬 Apply to Jobs")
+        for _, job in df.iterrows():
+            with st.expander(f"{job['Job Title']} at {job['Company']} – {job['Location']}"):
+                st.markdown(f"🔗 [Apply Here]({job['Link']})")
+                if test_mode:
+                    st.info("Test mode: application not submitted")
+                else:
+                    st.success("✅ Application submitted (simulated)")
+                    with open("apply_log.csv", "a") as f:
+                        f.write(f"{job['Job Title']},{job['Company']},{job['Location']},{job['Link']},{datetime.now()}\n")
+    else:
+        st.warning("No jobs found.")
+else:
+    st.info("Click 'Run Job Search' in the sidebar to start scraping.")
