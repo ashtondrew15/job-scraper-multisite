@@ -1,0 +1,7 @@
+job-scraper-multisite/
+├── job_scraper_app.py
+├── scraping/
+│   ├── __init__.py
+│   ├── indeed_selenium.py
+│   ├── remoteok_bs4.py
+│   ├── careerjet_api.py
